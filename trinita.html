@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trinita — Assistante personnelle</title>
+  <meta name="description" content="Trinita, votre assistante personnelle pour l'agenda et l'organisation." />
+
+  <link rel="manifest" href="#" />
+  <meta name="theme-color" content="#1a0f3c" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Trinita" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0820;
+      --bg2: #170e30;
+      --surface: rgba(255,255,255,0.04);
+      --surface-hover: rgba(255,255,255,0.07);
+      --border: rgba(255,255,255,0.08);
+      --accent: #9b7fe8;
+      --accent-light: #c4b0f5;
+      --text: #f0ecff;
+      --text-muted: rgba(240,236,255,0.5);
+      --user-bubble: rgba(155,127,232,0.15);
+      --user-text: #c4b0f5;
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      max-width: 680px;
+      margin: 0 auto;
+      height: 100dvh;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: -120px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 500px;
+      height: 300px;
+      background: radial-gradient(ellipse, rgba(100,60,200,0.25) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px 20px 16px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(14,8,32,0.85);
+      backdrop-filter: blur(12px);
+      position: relative;
+      z-index: 10;
+      flex-shrink: 0;
+    }
+
+    .avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6c3fc5, #9b7fe8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'DM Serif Display', serif;
+      font-size: 20px;
+      color: #fff;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .avatar::after {
+      content: '';
+      position: absolute;
+      bottom: 1px;
+      right: 1px;
+      width: 10px;
+      height: 10px;
+      background: #4ade80;
+      border-radius: 50%;
+      border: 2px solid var(--bg);
+    }
+
+    .header-info h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 20px;
+      font-weight: 400;
+      letter-spacing: 0.01em;
+      color: var(--text);
+      line-height: 1.2;
+    }
+
+    .header-info p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 20px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scroll-behavior: smooth;
+    }
+
+    #chat::-webkit-scrollbar { width: 4px; }
+    #chat::-webkit-scrollbar-track { background: transparent; }
+    #chat::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+    .msg { display: flex; gap: 10px; align-items: flex-end; animation: fadeUp 0.3s ease; }
+    .msg.user { flex-direction: row-reverse; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6c3fc5, #9b7fe8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'DM Serif Display', serif;
+      font-size: 13px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .bubble {
+      max-width: 72%;
+      padding: 11px 15px;
+      font-size: 14px;
+      line-height: 1.65;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px 18px 18px 4px;
+    }
+
+    .msg.user .bubble {
+      background: var(--user-bubble);
+      border-color: rgba(155,127,232,0.2);
+      border-radius: 18px 18px 4px 18px;
+      color: var(--user-text);
+    }
+
+    .typing-bubble {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      padding: 14px 16px;
+    }
+
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      opacity: 0.6;
+      animation: pulse 1.3s infinite;
+    }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes pulse {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    .shortcuts {
+      display: flex;
+      gap: 8px;
+      padding: 0 20px 12px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+
+    .shortcut-btn {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      padding: 7px 13px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .shortcut-btn:hover {
+      background: var(--surface-hover);
+      border-color: rgba(155,127,232,0.3);
+      color: var(--accent-light);
+    }
+
+    .input-area {
+      padding: 0 16px 20px;
+      flex-shrink: 0;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 6px 6px 6px 18px;
+      transition: border-color 0.2s;
+    }
+
+    .input-row:focus-within {
+      border-color: rgba(155,127,232,0.4);
+    }
+
+    #user-input {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    #user-input::placeholder { color: var(--text-muted); }
+
+    #send-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6c3fc5, #9b7fe8);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+
+    #send-btn:hover { opacity: 0.85; }
+    #send-btn:active { transform: scale(0.93); }
+    #send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    #send-btn svg { width: 16px; height: 16px; fill: white; }
+
+    /* PWA install banner */
+    #install-banner {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      background: rgba(155,127,232,0.1);
+      border-bottom: 1px solid rgba(155,127,232,0.15);
+      font-size: 13px;
+      color: var(--accent-light);
+      flex-shrink: 0;
+    }
+
+    #install-banner button {
+      margin-left: auto;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      padding: 5px 12px;
+      background: rgba(155,127,232,0.2);
+      border: 1px solid rgba(155,127,232,0.3);
+      color: var(--accent-light);
+      border-radius: 20px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="install-banner">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v13M7 11l5 5 5-5"/><path d="M3 19h18"/></svg>
+    Ajouter Trinita à l'écran d'accueil
+    <button id="install-btn">Installer</button>
+  </div>
+
+  <header>
+    <div class="avatar">T</div>
+    <div class="header-info">
+      <h1>Trinita</h1>
+      <p>Assistante personnelle · Agenda & organisation</p>
+    </div>
+  </header>
+
+  <div id="chat"></div>
+
+  <div class="shortcuts">
+    <button class="shortcut-btn" onclick="sendQuick('Aide-moi à planifier ma semaine')">Planifier ma semaine</button>
+    <button class="shortcut-btn" onclick="sendQuick('Quelles sont mes priorités du jour ?')">Priorités du jour</button>
+    <button class="shortcut-btn" onclick="sendQuick('Comment mieux gérer mon temps ?')">Gérer mon temps</button>
+  </div>
+
+  <div class="input-area">
+    <div class="input-row">
+      <input type="text" id="user-input" placeholder="Écrivez à Trinita…" autocomplete="off" />
+      <button id="send-btn" onclick="sendMessage()" aria-label="Envoyer">
+        <svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const SYSTEM = `Tu es Trinita, une assistante personnelle professionnelle et efficace spécialisée dans l'agenda et l'organisation.
+Tu réponds toujours en français, de façon concise, structurée et bienveillante mais sans excès.
+Tu aides l'utilisateur à planifier ses journées, gérer ses priorités, organiser son temps et rester productif.
+Tu poses des questions pertinentes quand tu as besoin d'informations.
+Tu utilises parfois des listes courtes pour structurer tes réponses. Pas plus de 4-5 phrases par réponse.`;
+
+    const history = [];
+    const chat = document.getElementById('chat');
+    const input = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+
+    function appendMsg(role, text) {
+      const wrap = document.createElement('div');
+      wrap.className = 'msg' + (role === 'user' ? ' user' : '');
+
+      if (role === 'assistant') {
+        wrap.innerHTML = `
+          <div class="msg-avatar">T</div>
+          <div class="bubble">${text.replace(/\n/g, '<br>')}</div>`;
+      } else {
+        wrap.innerHTML = `<div class="bubble">${text.replace(/\n/g, '<br>')}</div>`;
+      }
+
+      chat.appendChild(wrap);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function showTyping() {
+      const wrap = document.createElement('div');
+      wrap.className = 'msg';
+      wrap.id = 'typing';
+      wrap.innerHTML = `
+        <div class="msg-avatar">T</div>
+        <div class="bubble typing-bubble">
+          <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        </div>`;
+      chat.appendChild(wrap);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function removeTyping() {
+      const el = document.getElementById('typing');
+      if (el) el.remove();
+    }
+
+    async function sendMessage() {
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      appendMsg('user', text);
+      history.push({ role: 'user', content: text });
+
+      showTyping();
+      sendBtn.disabled = true;
+
+      try {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 1000,
+            system: SYSTEM,
+            messages: history
+          })
+        });
+
+        const data = await res.json();
+        const reply = data.content?.find(b => b.type === 'text')?.text || 'Désolée, je n\'ai pas pu répondre.';
+        history.push({ role: 'assistant', content: reply });
+        removeTyping();
+        appendMsg('assistant', reply);
+      } catch (e) {
+        removeTyping();
+        appendMsg('assistant', 'Une erreur est survenue. Vérifiez votre connexion.');
+      } finally {
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    }
+
+    function sendQuick(text) {
+      input.value = text;
+      sendMessage();
+    }
+
+    input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+
+    appendMsg('assistant', 'Bonjour ! Je suis Trinita, votre assistante personnelle. Je suis là pour vous aider à organiser votre agenda, planifier vos journées et gérer vos priorités. Comment puis-je vous aider ?');
+
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('install-banner').style.display = 'flex';
+    });
+
+    document.getElementById('install-btn').addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') document.getElementById('install-banner').style.display = 'none';
+      deferredPrompt = null;
+    });
+  </script>
+</body>
+</html>
