@@ -5,10 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Trinita — Assistante personnelle</title>
   <meta name="description" content="Trinita, votre assistante personnelle pour l'agenda et l'organisation." />
+  
+  <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#0e0820" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Trinita" />
+  
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
@@ -145,7 +148,6 @@
 
     .btn-start:hover { opacity: 0.88; }
     .btn-start:active { transform: scale(0.97); }
-
     .btn-start svg { width: 20px; height: 20px; fill: white; }
 
     .home-hints {
@@ -421,7 +423,6 @@
 </head>
 <body>
 
-  <!-- ÉCRAN D'ACCUEIL -->
   <div id="home">
     <div class="home-avatar">T</div>
     <div style="position:relative;z-index:1;">
@@ -441,7 +442,6 @@
     </div>
   </div>
 
-  <!-- ÉCRAN CHAT -->
   <div id="app">
     <div id="install-banner">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v13M7 11l5 5 5-5"/><path d="M3 19h18"/></svg>
@@ -450,7 +450,7 @@
     </div>
 
     <header>
-      <button class="back-btn" onclick="goHome()" aria-label="Retour">
+      <button class="back-btn" onclick="goHome()" aria-label="Retour à l'accueil">
         <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="15 18 9 12 15 6"/>
         </svg>
@@ -472,7 +472,7 @@
 
     <div class="input-area">
       <div class="input-row">
-        <input type="text" id="user-input" placeholder="Écrivez à Trinita…" autocomplete="off" />
+        <input type="text" id="user-input" aria-label="Message pour Trinita" placeholder="Écrivez à Trinita…" autocomplete="off" />
         <button id="send-btn" onclick="sendMessage()" aria-label="Envoyer">
           <svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
         </button>
@@ -492,6 +492,17 @@ Tu utilises parfois des listes courtes pour structurer tes réponses. Pas plus d
     const input = document.getElementById('user-input');
     const sendBtn = document.getElementById('send-btn');
     let chatInitialized = false;
+
+    // Fonction de sécurité contre les failles XSS
+    function escapeHTML(str) {
+      return str.replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[tag] || tag));
+    }
 
     function openChat(firstMsg) {
       document.getElementById('home').style.display = 'none';
@@ -518,12 +529,15 @@ Tu utilises parfois des listes courtes pour structurer tes réponses. Pas plus d
     }
 
     function appendMsg(role, text) {
+      // Nettoyage de l'entrée avant l'injection HTML
+      const safeText = escapeHTML(text).replace(/\n/g, '<br>');
+      
       const wrap = document.createElement('div');
       wrap.className = 'msg' + (role === 'user' ? ' user' : '');
       if (role === 'assistant') {
-        wrap.innerHTML = `<div class="msg-avatar">T</div><div class="bubble">${text.replace(/\n/g, '<br>')}</div>`;
+        wrap.innerHTML = `<div class="msg-avatar">T</div><div class="bubble">${safeText}</div>`;
       } else {
-        wrap.innerHTML = `<div class="bubble">${text.replace(/\n/g, '<br>')}</div>`;
+        wrap.innerHTML = `<div class="bubble">${safeText}</div>`;
       }
       chat.appendChild(wrap);
       chat.scrollTop = chat.scrollHeight;
@@ -551,19 +565,25 @@ Tu utilises parfois des listes courtes pour structurer tes réponses. Pas plus d
       history.push({ role: 'user', content: text });
       showTyping();
       sendBtn.disabled = true;
+      
       try {
-        const res = await fetch('https://api.anthropic.com/v1/messages', {
+        // Remplacer par l'URL de votre Cloudflare Worker
+        const WORKER_URL = 'https://trinita-backend.VOTRE-COMPTE.workers.dev'; 
+        
+        const res = await fetch(WORKER_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 1000,
             system: SYSTEM,
             messages: history
           })
         });
+        
         const data = await res.json();
+        
+        // Extraction depuis la réponse du Worker
         const reply = data.content?.find(b => b.type === 'text')?.text || "Désolée, je n'ai pas pu répondre.";
+        
         history.push({ role: 'assistant', content: reply });
         removeTyping();
         appendMsg('assistant', reply);
